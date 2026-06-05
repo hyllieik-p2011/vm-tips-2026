@@ -276,6 +276,7 @@
     <h1>⚽ VM-Tips 2026</h1>
   </div>
   <div class="subtitle">Hyllie IK · <span id="updated">Laddar...</span></div>
+  <div class="subtitle" style="margin-top:4px">Tryck på ett namn för att se tipset i detalj</div>
 </div>
 
 <div class="container">
@@ -287,7 +288,6 @@
   </div>
   <div id="leaderboard" style="display:none"></div>
   <div id="detail" style="display:none"></div>
-  <p class="footer" id="footer" style="display:none">Tryck på ett namn för att se tipset · Uppdateras var 60:e sekund</p>
 </div>
 
 <script>
@@ -341,13 +341,12 @@ function parseCSV(text) {
 
 function normalize(s) { return String(s || '').trim().toLowerCase(); }
 
-function normalizeVal(s) {
-  // Google Sheets API sometimes sends X as a string, sometimes weird
-  // Normalize 1, X, 2 reliably
+function normalizeVal(s, emptyMeansX) {
   const v = String(s || '').trim().toUpperCase();
   if (v === '1' || v === '1.0') return '1';
   if (v === '2' || v === '2.0') return '2';
   if (v === 'X' || v === 'X.0' || v === 'x') return 'X';
+  if (v === '' && emptyMeansX) return 'X'; // Google Forms stores X as empty cell
   return v;
 }
 
@@ -370,7 +369,7 @@ async function loadData() {
   cachedFacitRow        = facitData;
   const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => {
     const s = String(v || '').trim();
-    return s === '' ? '' : normalizeVal(s);
+    return s === '' ? '' : normalizeVal(s, true);
   });
   const facitMastare    = normalize(facitData[MATCH_COUNT]     || '');
   const facitSkyttekung = normalize(facitData[MATCH_COUNT + 1] || '');
@@ -386,7 +385,7 @@ async function loadData() {
     const matchDetaljer = [];
     for (let m = 0; m < MATCH_COUNT; m++) {
       const raw  = String(row[COL_MATCH_START + m] || '').trim();
-      const svar = normalizeVal(raw);
+      const svar = normalizeVal(raw, true); // empty = X in player answers
       const facit = facitMatches[m];
       const ratt  = facit !== '' && svar === facit;
       if (ratt) poang++;
@@ -458,7 +457,6 @@ function renderLeaderboard(scores, filter) {
   const search = document.getElementById('search-box');
   detail.style.display = 'none';
   lb.style.display     = 'flex';
-  document.getElementById('footer').style.display  = 'block';
   document.getElementById('search-wrap').style.display = 'block';
 
   // Restore filter input value
@@ -494,7 +492,6 @@ function showDetail(namn) {
 
   const lb  = document.getElementById('leaderboard');
   const det = document.getElementById('detail');
-  document.getElementById('footer').style.display       = 'none';
   document.getElementById('search-wrap').style.display  = 'none';
 
   lb.style.display  = 'none';
@@ -547,7 +544,6 @@ async function refresh() {
 }
 
 refresh();
-setInterval(refresh, 60000);
 </script>
 </body>
 </html>
