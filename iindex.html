@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VM-Tips 2026 – Hyllie IK</title>
+  <style>
+    :root {
+      --green-dark:  #006600;
+      --green-mid:   #008000;
+      --green-light: #00a300;
+      --green-accent:#ffffff;
+      --black:       #111111;
+      --card-bg:     #194D38;
+      --card-border: #0f3325;
+      --text:        #ffffff;
+      --text-muted:  #b8d4c0;
+      --silver:      #e0e0e0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #008000;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: transparent;
+      padding: 28px 16px 8px;
+      text-align: center;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    h1 {
+      font-size: clamp(22px, 6vw, 36px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: .02em;
+      text-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    .subtitle {
+      font-size: clamp(11px, 3vw, 14px);
+      color: rgba(255,255,255,0.7);
+      margin-top: 2px;
+    }
+
+    /* ── LEADERBOARD ── */
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px 12px 32px;
+    }
+
+    #leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: clamp(14px, 3vw, 20px) clamp(12px, 3vw, 18px);
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .row:hover, .row:active { background: #0f3d28; border-color: #ffffff; }
+
+    .row.top1 { border-color: #d4af37; background: #17301c; }
+    .row.top2 { border-color: #a8a8a8; }
+    .row.top3 { border-color: #8c5a2a; }
+
+    .rank {
+      font-size: clamp(20px, 5vw, 30px);
+      min-width: clamp(32px, 7vw, 44px);
+      text-align: center;
+      font-weight: 800;
+      color: var(--silver);
+      flex-shrink: 0;
+    }
+
+    .info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .namn {
+      font-size: clamp(16px, 4.5vw, 24px);
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sub {
+      font-size: clamp(11px, 3vw, 14px);
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pts {
+      font-size: clamp(28px, 8vw, 48px);
+      font-weight: 800;
+      color: #ffffff;
+      min-width: clamp(40px, 10vw, 60px);
+      text-align: right;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .pts-unit {
+      font-size: clamp(11px, 2.5vw, 14px);
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #b8d4c0;
+      font-size: clamp(11px, 2.5vw, 13px);
+    }
+
+    /* ── DETAIL VIEW ── */
+    #detail { display: none; }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #ffffff;
+      font-size: clamp(14px, 3.5vw, 16px);
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 0;
+      margin-bottom: 12px;
+      background: none;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .detail-header {
+      margin-bottom: 16px;
+    }
+    .detail-header h2 {
+      font-size: clamp(20px, 5vw, 28px);
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .detail-meta {
+      font-size: clamp(12px, 3vw, 15px);
+      color: var(--text-muted);
+    }
+
+    .tiebreak {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .tb-item { display: flex; flex-direction: column; gap: 4px; }
+    .tb-label {
+      font-size: clamp(9px, 2.5vw, 11px);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+    }
+    .tb-val {
+      font-size: clamp(13px, 3.5vw, 16px);
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .section-title {
+      font-size: clamp(10px, 2.5vw, 12px);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .match-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .mrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: clamp(10px, 2.5vw, 14px) clamp(10px, 3vw, 16px);
+    }
+    .mrow.correct { border-color: #ffffff; background: #0f3d22; }
+    .mrow.wrong   { border-color: #cc3333; background: #3d0f0f; }
+    .mrow.pending { opacity: .55; }
+
+    .mname {
+      flex: 1;
+      font-size: clamp(12px, 3vw, 15px);
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .mtip {
+      font-size: clamp(14px, 3.5vw, 18px);
+      font-weight: 700;
+      color: #fff;
+      min-width: 28px;
+      text-align: center;
+    }
+    .mfac {
+      font-size: clamp(12px, 3vw, 15px);
+      color: var(--text-muted);
+      min-width: 28px;
+      text-align: center;
+    }
+    .mic {
+      font-size: clamp(14px, 3.5vw, 18px);
+      min-width: 24px;
+      text-align: center;
+    }
+
+    /* ── LOADING / ERROR ── */
+    #status {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--card-border);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>⚽ VM-Tips 2026</h1>
+  </div>
+  <div class="subtitle">Hyllie IK · <span id="updated">Laddar...</span></div>
+</div>
+
+<div class="container">
+  <div id="status"><div class="spinner"></div>Hämtar resultat...</div>
+  <div id="leaderboard" style="display:none"></div>
+  <div id="detail" style="display:none"></div>
+  <p class="footer" id="footer" style="display:none">Tryck på ett namn för att se tipset · Uppdateras var 60:e sekund</p>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const SHEET_ID    = '1J7nCfhfwEakhL4KiOMigoVIr0KlKBriUDH5-BSBZ2rk';
+const SVAR_SHEET  = 'Formulärsvar 1';
+const FACIT_SHEET = 'Facit';
+const MATCH_COUNT = 13;
+
+// Column indices (0-based) in the svar sheet
+const COL_NAMN       = 2;
+const COL_MATCH_START = 5;
+const COL_VMMASTARE  = 18;
+const COL_SKYTTEKUNG = 19;
+const COL_MAL        = 20;
+// ────────────────────────────────────────────────────────────
+
+function sheetUrl(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&cachebust=${Date.now()}`;
+}
+
+async function fetchSheet(sheetName) {
+  const res  = await fetch(sheetUrl(sheetName));
+  const text = await res.text();
+  // Strip Google's callback wrapper
+  const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+  const rows = json.table.rows;
+  return rows.map(r => r.c.map(cell => cell ? (cell.v !== null && cell.v !== undefined ? String(cell.v) : '') : ''));
+}
+
+function normalize(s) { return String(s || '').trim().toLowerCase(); }
+
+let cachedScores = [];
+let cachedMatchNames = [];
+let cachedFacitRow = [];
+
+async function loadData() {
+  const [svarRows, facitRows] = await Promise.all([
+    fetchSheet(SVAR_SHEET),
+    fetchSheet(FACIT_SHEET)
+  ]);
+
+  // First row is headers
+  const svarHeaders = svarRows[0] || [];
+  cachedMatchNames  = svarHeaders.slice(COL_MATCH_START, COL_MATCH_START + MATCH_COUNT)
+    .map(h => h.replace(/^Matchresultat\s*\[/, '').replace(/\]$/, ''));
+
+  const facitData   = facitRows[1] || [];
+  cachedFacitRow    = facitData;
+  const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => normalize(v) === '' ? '' : String(v).trim().toUpperCase());
+  const facitMastare    = normalize(facitData[MATCH_COUNT]     || '');
+  const facitSkyttekung = normalize(facitData[MATCH_COUNT + 1] || '');
+  const facitMal        = parseFloat(facitData[MATCH_COUNT + 2]) || NaN;
+
+  const results = [];
+  for (let i = 1; i < svarRows.length; i++) {
+    const row  = svarRows[i];
+    const namn = (row[COL_NAMN] || '').trim();
+    if (!namn) continue;
+
+    let poang = 0;
+    const matchDetaljer = [];
+    for (let m = 0; m < MATCH_COUNT; m++) {
+      const svar  = String(row[COL_MATCH_START + m] || '').trim().toUpperCase();
+      const facit = facitMatches[m];
+      const ratt  = facit !== '' && svar === facit;
+      if (ratt) poang++;
+      matchDetaljer.push({ svar, facit, ratt });
+    }
+
+    const vmMastare   = normalize(row[COL_VMMASTARE]  || '');
+    const skyttekung  = normalize(row[COL_SKYTTEKUNG] || '');
+    const malGissning = parseFloat(row[COL_MAL]) || 0;
+    const malDiff     = isNaN(malGissning) || isNaN(facitMal) ? 999999 : Math.abs(malGissning - facitMal);
+
+    results.push({
+      namn, poang, matchDetaljer,
+      vmMastare, skyttekung, malGissning, malDiff,
+      rattVmMastare:   facitMastare    !== '' && vmMastare   === facitMastare,
+      rattSkyttekung:  facitSkyttekung !== '' && skyttekung  === facitSkyttekung,
+    });
+  }
+
+  results.sort((a, b) => {
+    if (b.poang !== a.poang) return b.poang - a.poang;
+    if (a.rattVmMastare !== b.rattVmMastare) return b.rattVmMastare - a.rattVmMastare;
+    if (a.rattSkyttekung !== b.rattSkyttekung) return b.rattSkyttekung - a.rattSkyttekung;
+    return a.malDiff - b.malDiff;
+  });
+
+  cachedScores = results;
+  return results;
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderLeaderboard(scores) {
+  const lb = document.getElementById('leaderboard');
+  const detail = document.getElementById('detail');
+  detail.style.display = 'none';
+  lb.style.display = 'flex';
+  document.getElementById('footer').style.display = 'block';
+
+  if (scores.length === 0) {
+    lb.innerHTML = '<div class="empty">Inga svar inkomna än.</div>';
+    return;
+  }
+
+  lb.innerHTML = scores.map((s, i) => {
+    const medal   = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+    const topClass = i === 0 ? ' top1' : i === 1 ? ' top2' : i === 2 ? ' top3' : '';
+    return `<div class="row${topClass}" onclick="showDetail(${i})">
+      <span class="rank">${medal || (i + 1)}</span>
+      <span class="info">
+        <span class="namn">${esc(s.namn)}</span>
+        <span class="sub">${esc(s.vmMastare)} · ${esc(s.skyttekung)} · ${s.malGissning} mål</span>
+      </span>
+      <span class="pts">${s.poang}<br><span class="pts-unit">rätt</span></span>
+    </div>`;
+  }).join('');
+}
+
+function showDetail(idx) {
+  const s    = cachedScores[idx];
+  const rank = idx + 1;
+  const lb   = document.getElementById('leaderboard');
+  const det  = document.getElementById('detail');
+  document.getElementById('footer').style.display = 'none';
+
+  lb.style.display  = 'none';
+  det.style.display = 'block';
+
+  const matchRows = s.matchDetaljer.map((m, i) => {
+    const speladAv = m.facit !== '';
+    const icon     = !speladAv ? '⏳' : m.ratt ? '✅' : '❌';
+    const facitTxt = speladAv ? m.facit : '–';
+    const cls      = !speladAv ? 'mrow pending' : m.ratt ? 'mrow correct' : 'mrow wrong';
+    return `<div class="${cls}">
+      <span class="mname">${esc(cachedMatchNames[i])}</span>
+      <span class="mtip">${m.svar || '–'}</span>
+      <span class="mfac">${facitTxt}</span>
+      <span class="mic">${icon}</span>
+    </div>`;
+  }).join('');
+
+  det.innerHTML = `
+    <button class="back-btn" onclick="renderLeaderboard(cachedScores)">← Tillbaka</button>
+    <div class="detail-header">
+      <h2>${esc(s.namn)}</h2>
+      <div class="detail-meta">#${rank} · ${s.poang} rätta av ${MATCH_COUNT}</div>
+    </div>
+    <div class="tiebreak">
+      <div class="tb-item"><span class="tb-label">VM-mästare</span><span class="tb-val">${esc(s.vmMastare) || '–'}</span></div>
+      <div class="tb-item"><span class="tb-label">Skyttekung</span><span class="tb-val">${esc(s.skyttekung) || '–'}</span></div>
+      <div class="tb-item"><span class="tb-label">Antal mål</span><span class="tb-val">${s.malGissning || '–'}</span></div>
+    </div>
+    <p class="section-title">Matchresultat</p>
+    <div class="match-list">${matchRows}</div>`;
+}
+
+async function refresh() {
+  try {
+    const scores = await loadData();
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('updated').textContent  = 'Senast: ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'});
+
+    // Only re-render leaderboard if detail view is not open
+    if (document.getElementById('detail').style.display === 'none' ||
+        document.getElementById('detail').style.display === '') {
+      renderLeaderboard(scores);
+    } else {
+      cachedScores = scores; // update data silently
+    }
+  } catch (err) {
+    document.getElementById('status').innerHTML =
+      '<p style="color:#c0392b">Kunde inte hämta data.<br><small>' + err.message + '</small></p>';
+    document.getElementById('status').style.display = 'block';
+  }
+}
+
+// Initial load + auto-refresh every 60s
+refresh();
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
