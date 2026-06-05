@@ -6,15 +6,13 @@
   <title>VM-Tips 2026 – Hyllie IK</title>
   <style>
     :root {
-      --green-dark:  #006600;
-      --green-mid:   #008000;
-      --green-light: #00a300;
-      --green-accent:#ffffff;
-      --black:       #111111;
-      --card-bg:     #194D38;
-      --card-border: #0f3325;
+      --bg:          #194d38;
+      --bg-deep:     #112e22;
+      --card-bg:     #1f5c43;
+      --card-border: #2a7a59;
+      --green-accent:#5dceA0;
       --text:        #ffffff;
-      --text-muted:  #b8d4c0;
+      --text-muted:  #93c4aa;
       --silver:      #e0e0e0;
     }
 
@@ -22,7 +20,7 @@
 
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      background: #008000;
+      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
@@ -49,7 +47,7 @@
     }
     .subtitle {
       font-size: clamp(11px, 3vw, 14px);
-      color: rgba(255,255,255,0.7);
+      color: var(--text-muted);
       margin-top: 2px;
     }
 
@@ -80,11 +78,11 @@
       transition: background .15s, border-color .15s;
       -webkit-tap-highlight-color: transparent;
     }
-    .row:hover, .row:active { background: #0f3d28; border-color: #ffffff; }
+    .row:hover, .row:active { background: #2a7a59; border-color: var(--green-accent); }
 
-    .row.top1 { border-color: #d4af37; background: #17301c; }
-    .row.top2 { border-color: #a8a8a8; }
-    .row.top3 { border-color: #8c5a2a; }
+    .row.top1 { border-color: #d4af37; background: #163d2c; }
+    .row.top2 { border-color: #a8a8a8; background: #1a4a35; }
+    .row.top3 { border-color: #8c5a2a; background: #1a4a35; }
 
     .rank {
       font-size: clamp(20px, 5vw, 30px);
@@ -122,7 +120,7 @@
     .pts {
       font-size: clamp(28px, 8vw, 48px);
       font-weight: 800;
-      color: #ffffff;
+      color: var(--green-accent);
       min-width: clamp(40px, 10vw, 60px);
       text-align: right;
       flex-shrink: 0;
@@ -144,7 +142,7 @@
     .footer {
       text-align: center;
       margin-top: 20px;
-      color: #b8d4c0;
+      color: var(--text-muted);
       font-size: clamp(11px, 2.5vw, 13px);
     }
 
@@ -183,7 +181,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      background: var(--card-bg);
+      background: var(--bg-deep);
       border: 1px solid var(--card-border);
       border-radius: 14px;
       padding: 14px;
@@ -221,8 +219,8 @@
       border-radius: 10px;
       padding: clamp(10px, 2.5vw, 14px) clamp(10px, 3vw, 16px);
     }
-    .mrow.correct { border-color: #ffffff; background: #0f3d22; }
-    .mrow.wrong   { border-color: #cc3333; background: #3d0f0f; }
+    .mrow.correct { border-color: #5dce90; background: #143d28; }
+    .mrow.wrong   { border-color: #cc4444; background: #2e1010; }
     .mrow.pending { opacity: .55; }
 
     .mname {
@@ -263,7 +261,7 @@
     .spinner {
       width: 36px; height: 36px;
       border: 3px solid var(--card-border);
-      border-top-color: #ffffff;
+      border-top-color: var(--green-accent);
       border-radius: 50%;
       animation: spin .8s linear infinite;
       margin: 0 auto 16px;
@@ -311,8 +309,11 @@ async function fetchSheet(sheetName) {
   const text = await res.text();
   // Strip Google's callback wrapper
   const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-  const rows = json.table.rows;
-  return rows.map(r => r.c.map(cell => cell ? (cell.v !== null && cell.v !== undefined ? String(cell.v) : '') : ''));
+  const table = json.table;
+  // Build header row from table.cols
+  const headerRow = table.cols.map(c => c.label || '');
+  const dataRows  = (table.rows || []).map(r => r.c.map(cell => cell ? (cell.v !== null && cell.v !== undefined ? String(cell.v) : '') : ''));
+  return [headerRow, ...dataRows];
 }
 
 function normalize(s) { return String(s || '').trim().toLowerCase(); }
@@ -331,6 +332,7 @@ async function loadData() {
   const svarHeaders = svarRows[0] || [];
   cachedMatchNames  = svarHeaders.slice(COL_MATCH_START, COL_MATCH_START + MATCH_COUNT)
     .map(h => h.replace(/^Matchresultat\s*\[/, '').replace(/\]$/, ''));
+
 
   const facitData   = facitRows[1] || [];
   cachedFacitRow    = facitData;
