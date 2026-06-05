@@ -280,6 +280,11 @@
 
 <div class="container">
   <div id="status"><div class="spinner"></div>Hämtar resultat...</div>
+  <div id="search-wrap" style="display:none; margin-bottom:12px">
+    <input id="search-box" type="search" placeholder="🔍  Sök namn..." autocomplete="off"
+      oninput="renderLeaderboard(cachedScores, this.value)"
+      style="width:100%;padding:12px 16px;font-size:16px;border-radius:12px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);outline:none;-webkit-appearance:none">
+  </div>
   <div id="leaderboard" style="display:none"></div>
   <div id="detail" style="display:none"></div>
   <p class="footer" id="footer" style="display:none">Tryck på ett namn för att se tipset · Uppdateras var 60:e sekund</p>
@@ -292,12 +297,11 @@ const SVAR_SHEET  = 'Formulärsvar 1';
 const FACIT_SHEET = 'Facit';
 const MATCH_COUNT = 13;
 
-// Column indices (0-based) in the svar sheet
-const COL_NAMN       = 2;
+const COL_NAMN        = 2;
 const COL_MATCH_START = 5;
-const COL_VMMASTARE  = 18;
-const COL_SKYTTEKUNG = 19;
-const COL_MAL        = 20;
+const COL_VMMASTARE   = 18;
+const COL_SKYTTEKUNG  = 19;
+const COL_MAL         = 20;
 // ────────────────────────────────────────────────────────────
 
 function sheetUrl(sheetName) {
@@ -305,12 +309,10 @@ function sheetUrl(sheetName) {
 }
 
 async function fetchSheet(sheetName) {
-  const res  = await fetch(sheetUrl(sheetName));
-  const text = await res.text();
-  // Strip Google's callback wrapper
-  const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+  const res   = await fetch(sheetUrl(sheetName));
+  const text  = await res.text();
+  const json  = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
   const table = json.table;
-  // Build header row from table.cols
   const headerRow = table.cols.map(c => c.label || '');
   const dataRows  = (table.rows || []).map(r => r.c.map(cell => cell ? (cell.v !== null && cell.v !== undefined ? String(cell.v) : '') : ''));
   return [headerRow, ...dataRows];
@@ -318,9 +320,10 @@ async function fetchSheet(sheetName) {
 
 function normalize(s) { return String(s || '').trim().toLowerCase(); }
 
-let cachedScores = [];
+let cachedScores     = [];
 let cachedMatchNames = [];
-let cachedFacitRow = [];
+let cachedFacitRow   = [];
+let currentFilter    = '';
 
 async function loadData() {
   const [svarRows, facitRows] = await Promise.all([
@@ -328,15 +331,13 @@ async function loadData() {
     fetchSheet(FACIT_SHEET)
   ]);
 
-  // First row is headers
   const svarHeaders = svarRows[0] || [];
   cachedMatchNames  = svarHeaders.slice(COL_MATCH_START, COL_MATCH_START + MATCH_COUNT)
     .map(h => h.replace(/^Matchresultat\s*\[/, '').replace(/\]$/, ''));
 
-
-  const facitData   = facitRows[1] || [];
-  cachedFacitRow    = facitData;
-  const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => normalize(v) === '' ? '' : String(v).trim().toUpperCase());
+  const facitData       = facitRows[1] || [];
+  cachedFacitRow        = facitData;
+  const facitMatches    = facitData.slice(0, MATCH_COUNT).map(v => normalize(v) === '' ? '' : String(v).trim().toUpperCase());
   const facitMastare    = normalize(facitData[MATCH_COUNT]     || '');
   const facitSkyttekung = normalize(facitData[MATCH_COUNT + 1] || '');
   const facitMal        = parseFloat(facitData[MATCH_COUNT + 2]) || NaN;
@@ -372,10 +373,24 @@ async function loadData() {
 
   results.sort((a, b) => {
     if (b.poang !== a.poang) return b.poang - a.poang;
-    if (a.rattVmMastare !== b.rattVmMastare) return b.rattVmMastare - a.rattVmMastare;
+    if (a.rattVmMastare  !== b.rattVmMastare)  return b.rattVmMastare  - a.rattVmMastare;
     if (a.rattSkyttekung !== b.rattSkyttekung) return b.rattSkyttekung - a.rattSkyttekung;
     return a.malDiff - b.malDiff;
   });
+
+  // Assign rank with ties — same rank if equal on all tiebreakers
+  let rank = 1;
+  for (let i = 0; i < results.length; i++) {
+    if (i > 0) {
+      const a = results[i - 1], b = results[i];
+      const tied = a.poang === b.poang &&
+                   a.rattVmMastare   === b.rattVmMastare &&
+                   a.rattSkyttekung  === b.rattSkyttekung &&
+                   a.malDiff         === b.malDiff;
+      if (!tied) rank = i + 1;
+    }
+    results[i].rank = rank;
+  }
 
   cachedScores = results;
   return results;
@@ -386,23 +401,49 @@ function esc(s) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function renderLeaderboard(scores) {
-  const lb = document.getElementById('leaderboard');
-  const detail = document.getElementById('detail');
-  detail.style.display = 'none';
-  lb.style.display = 'flex';
-  document.getElementById('footer').style.display = 'block';
+function getMedal(rank) {
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
+  return '';
+}
 
-  if (scores.length === 0) {
-    lb.innerHTML = '<div class="empty">Inga svar inkomna än.</div>';
+function getTopClass(rank) {
+  if (rank === 1) return ' top1';
+  if (rank === 2) return ' top2';
+  if (rank === 3) return ' top3';
+  return '';
+}
+
+function renderLeaderboard(scores, filter) {
+  if (filter !== undefined) currentFilter = filter;
+
+  const lb     = document.getElementById('leaderboard');
+  const detail = document.getElementById('detail');
+  const search = document.getElementById('search-box');
+  detail.style.display = 'none';
+  lb.style.display     = 'flex';
+  document.getElementById('footer').style.display  = 'block';
+  document.getElementById('search-wrap').style.display = 'block';
+
+  // Restore filter input value
+  if (search) search.value = currentFilter;
+
+  const filtered = currentFilter
+    ? scores.filter(s => s.namn.toLowerCase().includes(currentFilter.toLowerCase()))
+    : scores;
+
+  if (filtered.length === 0) {
+    lb.innerHTML = `<div class="empty">${currentFilter ? 'Ingen med det namnet hittades.' : 'Inga svar inkomna än.'}</div>`;
     return;
   }
 
-  lb.innerHTML = scores.map((s, i) => {
-    const medal   = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-    const topClass = i === 0 ? ' top1' : i === 1 ? ' top2' : i === 2 ? ' top3' : '';
-    return `<div class="row${topClass}" onclick="showDetail(${i})">
-      <span class="rank">${medal || (i + 1)}</span>
+  lb.innerHTML = filtered.map((s, i) => {
+    const medal    = getMedal(s.rank);
+    const topClass = getTopClass(s.rank);
+    const rankDisp = medal || s.rank;
+    return `<div class="row${topClass}" onclick="showDetail('${esc(s.namn)}')">
+      <span class="rank">${rankDisp}</span>
       <span class="info">
         <span class="namn">${esc(s.namn)}</span>
         <span class="sub">${esc(s.vmMastare)} · ${esc(s.skyttekung)} · ${s.malGissning} mål</span>
@@ -412,12 +453,14 @@ function renderLeaderboard(scores) {
   }).join('');
 }
 
-function showDetail(idx) {
-  const s    = cachedScores[idx];
-  const rank = idx + 1;
-  const lb   = document.getElementById('leaderboard');
-  const det  = document.getElementById('detail');
-  document.getElementById('footer').style.display = 'none';
+function showDetail(namn) {
+  const s = cachedScores.find(x => x.namn === namn);
+  if (!s) return;
+
+  const lb  = document.getElementById('leaderboard');
+  const det = document.getElementById('detail');
+  document.getElementById('footer').style.display       = 'none';
+  document.getElementById('search-wrap').style.display  = 'none';
 
   lb.style.display  = 'none';
   det.style.display = 'block';
@@ -439,7 +482,7 @@ function showDetail(idx) {
     <button class="back-btn" onclick="renderLeaderboard(cachedScores)">← Tillbaka</button>
     <div class="detail-header">
       <h2>${esc(s.namn)}</h2>
-      <div class="detail-meta">#${rank} · ${s.poang} rätta av ${MATCH_COUNT}</div>
+      <div class="detail-meta">#${s.rank} · ${s.poang} rätta av ${MATCH_COUNT}</div>
     </div>
     <div class="tiebreak">
       <div class="tb-item"><span class="tb-label">VM-mästare</span><span class="tb-val">${esc(s.vmMastare) || '–'}</span></div>
@@ -456,21 +499,18 @@ async function refresh() {
     document.getElementById('status').style.display = 'none';
     document.getElementById('updated').textContent  = 'Senast: ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'});
 
-    // Only re-render leaderboard if detail view is not open
-    if (document.getElementById('detail').style.display === 'none' ||
-        document.getElementById('detail').style.display === '') {
+    if (document.getElementById('detail').style.display !== 'block') {
       renderLeaderboard(scores);
     } else {
-      cachedScores = scores; // update data silently
+      cachedScores = scores;
     }
   } catch (err) {
     document.getElementById('status').innerHTML =
-      '<p style="color:#c0392b">Kunde inte hämta data.<br><small>' + err.message + '</small></p>';
+      '<p style="color:#c06060">Kunde inte hämta data.<br><small>' + err.message + '</small></p>';
     document.getElementById('status').style.display = 'block';
   }
 }
 
-// Initial load + auto-refresh every 60s
 refresh();
 setInterval(refresh, 60000);
 </script>
