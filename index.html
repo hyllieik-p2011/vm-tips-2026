@@ -305,23 +305,38 @@ const COL_MAL         = 20;
 // ────────────────────────────────────────────────────────────
 
 function sheetUrl(sheetName) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&cachebust=${Date.now()}`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&cachebust=${Date.now()}`;
 }
 
 async function fetchSheet(sheetName) {
-  const res   = await fetch(sheetUrl(sheetName));
-  const text  = await res.text();
-  const json  = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-  const table = json.table;
-  const headerRow = table.cols.map(c => c.label || '');
-  const dataRows  = (table.rows || []).map(r => r.c.map(cell => {
-    if (!cell) return '';
-    // Prefer formatted value (f) over raw value (v) — catches X which gviz parses as null
-    if (cell.f !== null && cell.f !== undefined) return String(cell.f);
-    if (cell.v !== null && cell.v !== undefined) return String(cell.v);
-    return '';
-  }));
-  return [headerRow, ...dataRows];
+  const res  = await fetch(sheetUrl(sheetName));
+  const text = await res.text();
+  // Parse CSV — values are raw text, no type coercion
+  return parseCSV(text);
+}
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = [];
+    let cur = '', inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+        else inQuote = !inQuote;
+      } else if (ch === ',' && !inQuote) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
 }
 
 function normalize(s) { return String(s || '').trim().toLowerCase(); }
@@ -353,7 +368,10 @@ async function loadData() {
 
   const facitData       = facitRows[1] || [];
   cachedFacitRow        = facitData;
-  const facitMatches    = facitData.slice(0, MATCH_COUNT).map(v => normalize(v) === '' ? '' : normalizeVal(String(v).trim()));
+  const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => {
+    const s = String(v || '').trim();
+    return s === '' ? '' : normalizeVal(s);
+  });
   const facitMastare    = normalize(facitData[MATCH_COUNT]     || '');
   const facitSkyttekung = normalize(facitData[MATCH_COUNT + 1] || '');
   const facitMal        = parseFloat(facitData[MATCH_COUNT + 2]) || NaN;
@@ -367,8 +385,8 @@ async function loadData() {
     let poang = 0;
     const matchDetaljer = [];
     for (let m = 0; m < MATCH_COUNT; m++) {
-      const raw   = String(row[COL_MATCH_START + m] || '').trim();
-      const svar  = normalizeVal(raw);
+      const raw  = String(row[COL_MATCH_START + m] || '').trim();
+      const svar = normalizeVal(raw);
       const facit = facitMatches[m];
       const ratt  = facit !== '' && svar === facit;
       if (ratt) poang++;
