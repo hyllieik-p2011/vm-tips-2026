@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VM-Tips 2026 – Hyllie IK</title>
+  <title>VM-Tips 2026 – Elias tippare</title>
   <style>
     :root {
-      --bg:          #194d38;
-      --bg-deep:     #112e22;
-      --card-bg:     #1f5c43;
-      --card-border: #2a7a59;
-      --green-accent:#5dceA0;
-      --text:        #ffffff;
-      --text-muted:  #93c4aa;
-      --silver:      #e0e0e0;
+      --bg:          #f0f2f5;
+      --bg-deep:     #2b5be8;
+      --card-bg:     #ffffff;
+      --card-border: #dde3ef;
+      --accent:      #2b5be8;
+      --accent-dark: #0d1b3e;
+      --text:        #0d1b3e;
+      --text-muted:  #6b7a99;
+      --silver:      #0d1b3e;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,8 +28,8 @@
 
     /* ── HEADER ── */
     .header {
-      background: transparent;
-      padding: 28px 16px 8px;
+      background: linear-gradient(135deg, #0d1b3e 0%, #2b5be8 100%);
+      padding: 28px 16px 20px;
       text-align: center;
     }
     .header-inner {
@@ -41,13 +42,13 @@
     h1 {
       font-size: clamp(22px, 6vw, 36px);
       font-weight: 800;
-      color: #fff;
+      color: #ffffff;
       letter-spacing: .02em;
-      text-shadow: 0 2px 8px rgba(0,0,0,.3);
+      text-shadow: none;
     }
     .subtitle {
       font-size: clamp(11px, 3vw, 14px);
-      color: var(--text-muted);
+      color: rgba(255,255,255,0.75);
       margin-top: 2px;
     }
 
@@ -72,6 +73,7 @@
       border: 1px solid var(--card-border);
       border-radius: 14px;
       padding: clamp(14px, 3vw, 20px) clamp(12px, 3vw, 18px);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
       text-decoration: none;
       color: inherit;
       cursor: pointer;
@@ -80,16 +82,16 @@
     }
     .row:hover, .row:active { background: #2a7a59; border-color: var(--green-accent); }
 
-    .row.top1 { border-color: #d4af37; background: #163d2c; }
-    .row.top2 { border-color: #a8a8a8; background: #1a4a35; }
-    .row.top3 { border-color: #8c5a2a; background: #1a4a35; }
+    .row.top1 { border-color: #d4af37; background: #fffbf0; }
+    .row.top2 { border-color: #a8a8a8; background: #fafafa; }
+    .row.top3 { border-color: #8c5a2a; background: #fafafa; }
 
     .rank {
       font-size: clamp(20px, 5vw, 30px);
       min-width: clamp(32px, 7vw, 44px);
       text-align: center;
       font-weight: 800;
-      color: var(--silver);
+      color: var(--accent-dark);
       flex-shrink: 0;
     }
 
@@ -104,7 +106,7 @@
     .namn {
       font-size: clamp(16px, 4.5vw, 24px);
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -121,7 +123,7 @@
     .pts {
       font-size: clamp(28px, 8vw, 48px);
       font-weight: 800;
-      color: var(--green-accent);
+      color: var(--accent);
       min-width: clamp(40px, 10vw, 60px);
       text-align: right;
       flex-shrink: 0;
@@ -170,7 +172,7 @@
     }
     .detail-header h2 {
       font-size: clamp(20px, 5vw, 28px);
-      color: #fff;
+      color: var(--text);
       margin-bottom: 2px;
     }
     .detail-meta {
@@ -182,8 +184,8 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      background: var(--bg-deep);
-      border: 1px solid var(--card-border);
+      background: var(--accent-dark);
+      border: 1px solid var(--accent-dark);
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 16px;
@@ -193,12 +195,12 @@
       font-size: clamp(9px, 2.5vw, 11px);
       text-transform: uppercase;
       letter-spacing: .07em;
-      color: var(--text-muted);
+      color: rgba(255,255,255,0.6);
     }
     .tb-val {
       font-size: clamp(13px, 3.5vw, 16px);
       font-weight: 700;
-      color: #fff;
+      color: #ffffff;
       text-transform: capitalize;
     }
 
@@ -208,6 +210,7 @@
       letter-spacing: .08em;
       color: var(--text-muted);
       margin-bottom: 8px;
+      font-weight: 700;
     }
 
     .match-list { display: flex; flex-direction: column; gap: 8px; }
@@ -221,8 +224,8 @@
       border-radius: 10px;
       padding: clamp(10px, 2.5vw, 14px) clamp(10px, 3vw, 16px);
     }
-    .mrow.correct { border-color: #5dce90; background: #143d28; }
-    .mrow.wrong   { border-color: #cc4444; background: #2e1010; }
+    .mrow.correct { border-color: #2b5be8; background: #eef1fb; }
+    .mrow.wrong   { border-color: #e84444; background: #fdf0f0; }
     .mrow.pending { opacity: .55; }
 
     .mname {
@@ -237,7 +240,7 @@
     .mtip {
       font-size: clamp(14px, 3.5vw, 18px);
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
       min-width: 28px;
       text-align: center;
     }
@@ -263,7 +266,7 @@
     .spinner {
       width: 36px; height: 36px;
       border: 3px solid var(--card-border);
-      border-top-color: var(--green-accent);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin .8s linear infinite;
       margin: 0 auto 16px;
@@ -277,7 +280,7 @@
   <div class="header-inner">
     <h1>⚽ VM-Tips 2026</h1>
   </div>
-  <div class="subtitle">Hyllie IK · <span id="updated">Laddar...</span></div>
+  <div class="subtitle">Elias tippare · <span id="updated">Laddar...</span></div>
   <div class="subtitle" style="margin-top:4px">Tryck på ett namn för att se tipset i detalj</div>
 </div>
 
@@ -294,16 +297,16 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
-const SHEET_ID    = '1J7nCfhfwEakhL4KiOMigoVIr0KlKBriUDH5-BSBZ2rk';
+const SHEET_ID    = '1ZVTnUpKejCBqqD7a04AOqB8eeLU5YTULq9Z6VHza_EY';
 const SVAR_SHEET  = 'Formulärsvar 1';
 const FACIT_SHEET = 'Facit';
 const MATCH_COUNT = 13;
 
 const COL_NAMN        = 2;
-const COL_MATCH_START = 5;
-const COL_VMMASTARE   = 18;
-const COL_SKYTTEKUNG  = 19;
-const COL_MAL         = 20;
+const COL_MATCH_START = 4;
+const COL_VMMASTARE   = 17;
+const COL_SKYTTEKUNG  = 18;
+const COL_MAL         = 19;
 // ────────────────────────────────────────────────────────────
 
 function sheetUrl(sheetName) {
