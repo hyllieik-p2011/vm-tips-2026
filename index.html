@@ -367,7 +367,7 @@ async function loadData() {
   cachedMatchNames  = svarHeaders.slice(COL_MATCH_START, COL_MATCH_START + MATCH_COUNT)
     .map(h => h.replace(/^Matchresultat\s*\[/, '').replace(/\]$/, ''));
 
-  const facitData       = facitRows[1] || [];
+  const facitData       = (facitRows.length > 1 ? facitRows[1] : null) || new Array(16).fill('');
   cachedFacitRow        = facitData;
   const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => {
     const s = String(v || '').trim();
@@ -437,14 +437,16 @@ function esc(s) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function getMedal(rank) {
+function getMedal(rank, poang) {
+  if (poang === 0) return '';
   if (rank === 1) return '🥇';
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
   return '';
 }
 
-function getTopClass(rank) {
+function getTopClass(rank, poang) {
+  if (poang === 0) return '';
   if (rank === 1) return ' top1';
   if (rank === 2) return ' top2';
   if (rank === 3) return ' top3';
@@ -474,8 +476,8 @@ function renderLeaderboard(scores, filter) {
   }
 
   lb.innerHTML = filtered.map((s, i) => {
-    const medal    = getMedal(s.rank);
-    const topClass = getTopClass(s.rank);
+    const medal    = getMedal(s.rank, s.poang);
+    const topClass = getTopClass(s.rank, s.poang);
     const rankDisp = medal || s.rank;
     return `<div class="row${topClass}" onclick="showDetail('${esc(s.namn)}')">
       <span class="rank">${rankDisp}</span>
