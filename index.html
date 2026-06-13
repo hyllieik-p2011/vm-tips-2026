@@ -510,6 +510,7 @@ async function loadData() {
 
   const facitData       = (facitRows.length > 1 ? facitRows[1] : null) || new Array(16).fill('');
   cachedFacitRow        = facitData;
+  window._cachedFacitRow = facitData;
   const facitMatches = facitData.slice(0, MATCH_COUNT).map(v => {
     const s = String(v || '').trim();
     return s === '' ? '' : normalizeVal(s, true);
@@ -606,12 +607,19 @@ function renderNextMatch(scores) {
   const wrap = document.getElementById('next-match-wrap');
   const now  = new Date();
 
-  // Find first match that hasn't started yet
+  // Find first match without facit result (not yet decided)
+  const facitData = (window._cachedFacitRow || []);
   let nextIdx = -1;
   for (let i = 0; i < MATCH_SCHEDULE.length; i++) {
-    const m = MATCH_SCHEDULE[i];
-    const matchTime = new Date(m.date + 'T' + m.time + ':00');
-    if (matchTime > now) { nextIdx = i; break; }
+    const facit = String(facitData[i] || '').trim();
+    if (facit === '') { nextIdx = i; break; }
+  }
+  // Fallback: if facit not loaded yet, use time-based
+  if (nextIdx === -1 && facitData.length === 0) {
+    for (let i = 0; i < MATCH_SCHEDULE.length; i++) {
+      const matchTime = new Date(MATCH_SCHEDULE[i].date + 'T' + MATCH_SCHEDULE[i].time + ':00');
+      if (matchTime > now) { nextIdx = i; break; }
+    }
   }
 
   if (nextIdx === -1) {
