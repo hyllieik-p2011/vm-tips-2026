@@ -318,6 +318,67 @@
     }
 
 
+    /* ── NEXT MATCH CARD ── */
+    .next-match-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .next-match-label {
+      font-size: clamp(9px, 2.5vw, 11px);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .next-match-name {
+      font-size: clamp(16px, 4vw, 22px);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .next-match-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .next-match-time {
+      font-size: clamp(12px, 3vw, 15px);
+      color: var(--text-muted);
+    }
+    .next-match-dist {
+      display: flex;
+      gap: 8px;
+    }
+    .next-match-dist .dist-item {
+      flex: 1;
+    }
+    /* ── MATCH TIME IN DETAIL VIEW ── */
+    .match-time-row {
+      font-size: clamp(10px, 2.5vw, 12px);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .ch-name {
+      font-size: clamp(11px, 2.5vw, 13px);
+      font-weight: 700;
+      color: var(--green-accent);
+      letter-spacing: .03em;
+    }
+    .ch-name-sm {
+      font-size: clamp(10px, 2.5vw, 12px);
+      font-weight: 700;
+      color: var(--green-accent);
+    }
     /* ── LOADING / ERROR ── */
     #status {
       text-align: center;
