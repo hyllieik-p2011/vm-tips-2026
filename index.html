@@ -288,6 +288,35 @@
       text-align: right;
     }
 
+/* ── MATCH TIME IN DETAIL VIEW ── */
+    .match-time-row {
+      font-size: clamp(10px, 2.5vw, 12px);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .ch-logo-sm {
+      height: 16px;
+      max-width: 42px;
+      width: auto;
+      object-fit: contain;
+      border-radius: 2px;
+    }
+  
+    .ch-name {
+      font-size: clamp(11px, 2.5vw, 13px);
+      font-weight: 700;
+      color: var(--green-accent);
+      letter-spacing: .03em;
+    }
+    .ch-name-sm {
+      font-size: clamp(10px, 2.5vw, 12px);
+      font-weight: 700;
+      color: var(--accent);
+    }
+
     /* ── LOADING / ERROR ── */
     #status {
       text-align: center;
@@ -312,12 +341,13 @@
   <div class="header-inner">
     <h1>⚽ VM-Tips 2026</h1>
   </div>
-  <div class="subtitle">Hyllie IK · <span id="updated">Laddar...</span></div>
+  <div class="subtitle">Hyllie IK · <span id="updated">Laddar...</span> tippare</div>
   <div class="subtitle" style="margin-top:4px">Tryck på ett namn för att se tipset i detalj</div>
 </div>
 
 <div class="container">
   <div id="status"><div class="spinner"></div>Hämtar resultat...</div>
+  <div id="next-match-wrap" style="display:none"></div>
   <div id="search-wrap" style="display:none; margin-bottom:12px">
     <input id="search-box" type="search" placeholder="🔍  Sök namn..." autocomplete="off"
       oninput="renderLeaderboard(cachedScores, this.value)"
@@ -328,6 +358,20 @@
 </div>
 
 <script>
+const MATCH_SCHEDULE = [{"nr": 1, "name": "Brasilien \u2013 Marocko", "date": "2026-06-14", "time": "00:00", "ch": "svt1"}, {"nr": 2, "name": "Sverige \u2013 Tunisien", "date": "2026-06-15", "time": "04:00", "ch": "svt1"}, {"nr": 3, "name": "England \u2013 Kroatien", "date": "2026-06-17", "time": "22:00", "ch": "tv4"}, {"nr": 4, "name": "Nederl\u00e4nderna \u2013 Sverige", "date": "2026-06-20", "time": "19:00", "ch": "tv4"}, {"nr": 5, "name": "Tyskland \u2013 Elfenbenskusten", "date": "2026-06-20", "time": "22:00", "ch": "tv4"}, {"nr": 6, "name": "Argentina \u2013 \u00d6sterrike", "date": "2026-06-22", "time": "19:00", "ch": "svt1"}, {"nr": 7, "name": "Skottland \u2013 Brasilien", "date": "2026-06-25", "time": "00:00", "ch": "tv4"}, {"nr": 8, "name": "Japan \u2013 Sverige", "date": "2026-06-26", "time": "01:00", "ch": "svt1"}, {"nr": 9, "name": "Turkiet \u2013 USA", "date": "2026-06-26", "time": "04:00", "ch": "tv4"}, {"nr": 10, "name": "Norge \u2013 Frankrike", "date": "2026-06-26", "time": "21:00", "ch": "tv4"}, {"nr": 11, "name": "Uruguay \u2013 Spanien", "date": "2026-06-27", "time": "02:00", "ch": "tv4"}, {"nr": 12, "name": "Kroatien \u2013 Ghana", "date": "2026-06-27", "time": "23:00", "ch": "svt2"}, {"nr": 13, "name": "Colombia \u2013 Portugal", "date": "2026-06-28", "time": "01:30", "ch": "tv4"}];
+
+const CHANNEL_LOGOS = {
+  "svt1": "svt1.png",
+  "svt2": "svt2.png",
+  "svtplay": "svtplay.png",
+  "tv4": "tv4.png",
+  "tv4play": "tv4play.png",
+};
+
+const PLAY_CHANNEL = {"svt1": "svtplay", "svt2": "svtplay", "tv4": "tv4play"};
+
+const CHANNEL_NAMES = {"svt1": "SVT1", "svt2": "SVT2", "tv4": "TV4"};
+
 // ── CONFIG ──────────────────────────────────────────────────
 const SHEET_ID    = '1J7nCfhfwEakhL4KiOMigoVIr0KlKBriUDH5-BSBZ2rk';
 const SVAR_SHEET  = 'Formulärsvar 1';
@@ -488,6 +532,66 @@ function getTopClass(rank, poang) {
   return '';
 }
 
+function getDatetimeStr(match) {
+  // e.g. "2026-06-14" + "00:00" => date string for display
+  const days = ['sön','mån','tis','ons','tor','fre','lör'];
+  const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  const d = new Date(match.date + 'T' + match.time + ':00');
+  return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + match.time;
+}
+
+function renderNextMatch(scores) {
+  const wrap = document.getElementById('next-match-wrap');
+  const now  = new Date();
+
+  // Find first match that hasn't started yet
+  let nextIdx = -1;
+  for (let i = 0; i < MATCH_SCHEDULE.length; i++) {
+    const m = MATCH_SCHEDULE[i];
+    const matchTime = new Date(m.date + 'T' + m.time + ':00');
+    if (matchTime > now) { nextIdx = i; break; }
+  }
+
+  if (nextIdx === -1) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  const match = MATCH_SCHEDULE[nextIdx];
+  const dist  = calcDist(nextIdx);
+  const chLogo    = CHANNEL_LOGOS[match.ch] || '';
+  const playKey   = PLAY_CHANNEL[match.ch];
+  const playLogo  = playKey ? CHANNEL_LOGOS[playKey] : '';
+  const timeStr   = getDatetimeStr(match);
+
+  wrap.style.display = 'block';
+  wrap.innerHTML = `<div class="next-match-card">
+    <div class="next-match-label">⚽ Nästa match · Match ${match.nr} av 13</div>
+    <div class="next-match-name">${match.name}</div>
+    <div class="next-match-meta">
+      <span class="next-match-time">${timeStr}</span>
+<span class="ch-name">${CHANNEL_NAMES[match.ch] || match.ch.toUpperCase()}</span>
+    </div>
+    <div class="next-match-dist">
+      <div class="dist-item">
+        <span class="dist-label">1</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['1']}%"></div></div>
+        <span class="dist-pct">${dist['1']}%</span>
+      </div>
+      <div class="dist-item">
+        <span class="dist-label">X</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['X']}%"></div></div>
+        <span class="dist-pct">${dist['X']}%</span>
+      </div>
+      <div class="dist-item">
+        <span class="dist-label">2</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['2']}%"></div></div>
+        <span class="dist-pct">${dist['2']}%</span>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderLeaderboard(scores, filter) {
   if (filter !== undefined) currentFilter = filter;
 
@@ -497,6 +601,7 @@ function renderLeaderboard(scores, filter) {
   detail.style.display = 'none';
   lb.style.display     = 'flex';
   document.getElementById('search-wrap').style.display = 'block';
+  renderNextMatch(scores);
 
   // Restore filter input value
   if (search) search.value = currentFilter;
@@ -543,6 +648,24 @@ function calcDist(matchIndex) {
   };
 }
 
+function calcDist(matchIndex) {
+  const counts = { '1': 0, 'X': 0, '2': 0 };
+  let total = 0;
+  cachedScores.forEach(s => {
+    const svar = s.matchDetaljer[matchIndex]?.svar;
+    if (svar && counts[svar] !== undefined) {
+      counts[svar]++;
+      total++;
+    }
+  });
+  return {
+    '1': total ? Math.round(counts['1'] / total * 100) : 0,
+    'X': total ? Math.round(counts['X'] / total * 100) : 0,
+    '2': total ? Math.round(counts['2'] / total * 100) : 0,
+    total
+  };
+}
+
 function showDetail(namn) {
   const s = cachedScores.find(x => x.namn === namn);
   if (!s) return;
@@ -550,6 +673,7 @@ function showDetail(namn) {
   const lb  = document.getElementById('leaderboard');
   const det = document.getElementById('detail');
   document.getElementById('search-wrap').style.display  = 'none';
+  document.getElementById('next-match-wrap').style.display = 'none';
 
   lb.style.display  = 'none';
   det.style.display = 'block';
@@ -560,8 +684,15 @@ function showDetail(namn) {
     const facitTxt = speladAv ? m.facit : '–';
     const cls      = !speladAv ? 'mrow pending' : m.ratt ? 'mrow correct' : 'mrow wrong';
     const dist     = calcDist(i);
+    const sched    = MATCH_SCHEDULE[i];
+    const timeStr  = sched ? getDatetimeStr(sched) : '';
+    const chName   = sched ? (CHANNEL_NAMES[sched.ch] || sched.ch.toUpperCase()) : '';
     return `<div class="${cls}">
       <div style="flex:1;min-width:0">
+        <div class="match-time-row">
+          <span>${timeStr}</span>
+          <span class="ch-name-sm">${chName}</span>
+        </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="mname">${esc(cachedMatchNames[i] || (i+1) + '. Match')}</span>
           <span class="mtip">${m.svar || '–'}</span>
@@ -608,7 +739,7 @@ async function refresh() {
   try {
     const scores = await loadData();
     document.getElementById('status').style.display = 'none';
-    document.getElementById('updated').textContent  = 'Senast: ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('updated').textContent  = scores.length;
 
     if (document.getElementById('detail').style.display !== 'block') {
       renderLeaderboard(scores);
