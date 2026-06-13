@@ -252,6 +252,41 @@
       min-width: 24px;
       text-align: center;
     }
+    .dist {
+      display: flex;
+      gap: 6px;
+      padding: 6px 0 2px;
+      font-size: clamp(10px, 2.5vw, 12px);
+      color: var(--text-muted);
+    }
+    .dist-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+    .dist-label {
+      font-weight: 700;
+      min-width: 12px;
+      color: var(--text);
+    }
+    .dist-bar-wrap {
+      flex: 1;
+      background: var(--card-border);
+      border-radius: 3px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .dist-bar {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--green-accent);
+      transition: width .3s;
+    }
+    .dist-pct {
+      min-width: 28px;
+      text-align: right;
+    }
 
     /* ── LOADING / ERROR ── */
     #status {
@@ -490,6 +525,24 @@ function renderLeaderboard(scores, filter) {
   }).join('');
 }
 
+function calcDist(matchIndex) {
+  const counts = { '1': 0, 'X': 0, '2': 0 };
+  let total = 0;
+  cachedScores.forEach(s => {
+    const svar = s.matchDetaljer[matchIndex]?.svar;
+    if (svar && counts[svar] !== undefined) {
+      counts[svar]++;
+      total++;
+    }
+  });
+  return {
+    '1': total ? Math.round(counts['1'] / total * 100) : 0,
+    'X': total ? Math.round(counts['X'] / total * 100) : 0,
+    '2': total ? Math.round(counts['2'] / total * 100) : 0,
+    total
+  };
+}
+
 function showDetail(namn) {
   const s = cachedScores.find(x => x.namn === namn);
   if (!s) return;
@@ -506,11 +559,33 @@ function showDetail(namn) {
     const icon     = !speladAv ? '⏳' : m.ratt ? '✅' : '❌';
     const facitTxt = speladAv ? m.facit : '–';
     const cls      = !speladAv ? 'mrow pending' : m.ratt ? 'mrow correct' : 'mrow wrong';
+    const dist     = calcDist(i);
     return `<div class="${cls}">
-      <span class="mname">${esc(cachedMatchNames[i])}</span>
-      <span class="mtip">${m.svar || '–'}</span>
-      <span class="mfac">${facitTxt}</span>
-      <span class="mic">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mname">${esc(cachedMatchNames[i] || (i+1) + '. Match')}</span>
+          <span class="mtip">${m.svar || '–'}</span>
+          <span class="mfac">${facitTxt}</span>
+          <span class="mic">${icon}</span>
+        </div>
+        <div class="dist">
+          <div class="dist-item">
+            <span class="dist-label">1</span>
+            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['1']}%"></div></div>
+            <span class="dist-pct">${dist['1']}%</span>
+          </div>
+          <div class="dist-item">
+            <span class="dist-label">X</span>
+            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['X']}%"></div></div>
+            <span class="dist-pct">${dist['X']}%</span>
+          </div>
+          <div class="dist-item">
+            <span class="dist-label">2</span>
+            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${dist['2']}%"></div></div>
+            <span class="dist-pct">${dist['2']}%</span>
+          </div>
+        </div>
+      </div>
     </div>`;
   }).join('');
 
