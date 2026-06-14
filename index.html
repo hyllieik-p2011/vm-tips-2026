@@ -441,6 +441,7 @@ const FACIT_SHEET = 'Facit';
 const MATCH_COUNT = 13;
 
 const COL_NAMN        = 2;
+const COL_TIPSNUMMER  = 3;
 const COL_MATCH_START = 5;
 const COL_VMMASTARE   = 18;
 const COL_SKYTTEKUNG  = 19;
@@ -522,8 +523,10 @@ async function loadData() {
   const results = [];
   for (let i = 1; i < svarRows.length; i++) {
     const row  = svarRows[i];
-    const namn = (row[COL_NAMN] || '').trim();
+    const namn       = (row[COL_NAMN] || '').trim();
     if (!namn) continue;
+    const tipsnr     = (row[COL_TIPSNUMMER] || '').trim();
+    const uniqueKey  = tipsnr ? namn + '||' + tipsnr : namn;
 
     let poang = 0;
     const matchDetaljer = [];
@@ -542,7 +545,7 @@ async function loadData() {
     const malDiff     = isNaN(malGissning) || isNaN(facitMal) ? 999999 : Math.abs(malGissning - facitMal);
 
     results.push({
-      namn, poang, matchDetaljer,
+      namn, uniqueKey, tipsnr, poang, matchDetaljer,
       vmMastare, skyttekung, malGissning, malDiff,
       rattVmMastare:   facitMastare    !== '' && vmMastare   === facitMastare,
       rattSkyttekung:  facitSkyttekung !== '' && skyttekung  === facitSkyttekung,
@@ -689,10 +692,10 @@ function renderLeaderboard(scores, filter) {
     const medal    = getMedal(s.rank, s.poang);
     const topClass = getTopClass(s.rank, s.poang);
     const rankDisp = medal || s.rank;
-    return `<div class="row${topClass}" onclick="showDetail('${esc(s.namn)}')">
+    return `<div class="row${topClass}" onclick="showDetail('${esc(s.uniqueKey)}')">
       <span class="rank">${rankDisp}</span>
       <span class="info">
-        <span class="namn">${esc(s.namn)}</span>
+        <span class="namn">${esc(s.namn)}${nameCount[s.namn] > 1 && s.tipsnr ? ' <span style="font-size:.75em;opacity:.6">('+esc(s.tipsnr)+')</span>' : ''}</span>
         <span class="sub">${esc(s.vmMastare)} · ${esc(s.skyttekung)} · ${s.malGissning} mål</span>
       </span>
       <span class="pts">${s.poang}<br><span class="pts-unit">rätt</span></span>
@@ -737,7 +740,7 @@ function calcDist(matchIndex) {
 }
 
 function showDetail(namn) {
-  const s = cachedScores.find(x => x.namn === namn);
+  const s = cachedScores.find(x => x.uniqueKey === namn);
   if (!s) return;
 
   const lb  = document.getElementById('leaderboard');
