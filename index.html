@@ -683,6 +683,9 @@ function renderLeaderboard(scores, filter) {
     ? scores.filter(s => s.namn.toLowerCase().includes(currentFilter.toLowerCase()))
     : scores;
 
+  const nameCount = {};
+  filtered.forEach(s => { nameCount[s.namn] = (nameCount[s.namn] || 0) + 1; });
+
   if (filtered.length === 0) {
     lb.innerHTML = `<div class="empty">${currentFilter ? 'Ingen med det namnet hittades.' : 'Inga svar inkomna än.'}</div>`;
     return;
