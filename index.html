@@ -434,6 +434,67 @@ const PLAY_CHANNEL = {"svt1": "svtplay", "svt2": "svtplay", "tv4": "tv4play"};
 
 const CHANNEL_NAMES = {"svt1": "SVT1", "svt2": "SVT2", "tv4": "TV4"};
 
+const TEAM_NAME_MAP = {
+  "algeriet": "algeria",
+  "argentina": "argentina",
+  "australien": "australia",
+  "belgien": "belgium",
+  "bosnien och hercegovina": "bosnia and herzegovina",
+  "brasilien": "brazil",
+  "colombia": "colombia",
+  "curacao": "curaçao",
+  "curaçao": "curaçao",
+  "demokratiska republiken kongo": "dr congo",
+  "dr kongo": "dr congo",
+  "ecuador": "ecuador",
+  "egypten": "egypt",
+  "elfenbenskusten": "côte d'ivoire",
+  "england": "england",
+  "frankrike": "france",
+  "ghana": "ghana",
+  "haiti": "haiti",
+  "irak": "iraq",
+  "iran": "iran",
+  "japan": "japan",
+  "jordanien": "jordan",
+  "kanada": "canada",
+  "kap verde": "cape verde",
+  "kroatien": "croatia",
+  "marocko": "morocco",
+  "mexiko": "mexico",
+  "nederländerna": "netherlands",
+  "norge": "norway",
+  "nya zeeland": "new zealand",
+  "panama": "panama",
+  "paraguay": "paraguay",
+  "portugal": "portugal",
+  "qatar": "qatar",
+  "saudiarabien": "saudi arabia",
+  "schweiz": "switzerland",
+  "senegal": "senegal",
+  "skottland": "scotland",
+  "spanien": "spain",
+  "sverige": "sweden",
+  "sydafrika": "south africa",
+  "sydkorea": "korea republic",
+  "tjeckien": "czech republic",
+  "tunisien": "tunisia",
+  "turkiet": "turkey",
+  "tyskland": "germany",
+  "uruguay": "uruguay",
+  "usa": "united states",
+  "uzbekistan": "uzbekistan",
+  "österrike": "austria",
+};
+
+// ── LIVE DATA CONFIG ─────────────────────────────────────────
+const LIVE_SHEET_ID      = '1iU7hAHllyqBgLs16EaOfbgRD9cwdqab9HrmuKqxnFbA';
+const LIVE_TEAMS_SHEET   = 'Kvar-i-turneringen';
+const LIVE_SCORERS_SHEET = 'Skytteligan';
+const LIVE_GOALS_SHEET   = 'Matchdata';
+
+
+
 // ── CONFIG ──────────────────────────────────────────────────
 const SHEET_ID    = '1J7nCfhfwEakhL4KiOMigoVIr0KlKBriUDH5-BSBZ2rk';
 const SVAR_SHEET  = 'Formulärsvar 1';
@@ -447,6 +508,10 @@ const COL_VMMASTARE   = 18;
 const COL_SKYTTEKUNG  = 19;
 const COL_MAL         = 20;
 // ────────────────────────────────────────────────────────────
+
+function liveSheetUrl(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${LIVE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&cachebust=${Date.now()}`;
+}
 
 function sheetUrl(sheetName) {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&cachebust=${Date.now()}`;
@@ -494,10 +559,54 @@ function normalizeVal(s, emptyMeansX) {
   return v;
 }
 
-let cachedScores     = [];
+let cachedScores      = [];
+let liveTeams         = new Set();
+let liveScorers       = [];
+let liveGoalPrognosis = null;
 let cachedMatchNames = [];
 let cachedFacitRow   = [];
 let currentFilter    = '';
+
+async function fetchLiveData() {
+  try {
+    // Lag kvar i turneringen
+    const teamsText = await (await fetch(liveSheetUrl(LIVE_TEAMS_SHEET))).text();
+    const teamsRows = parseCSV(teamsText).slice(2); // rad 1=tidsstämpel, rad 2=rubrik
+    liveTeams = new Set(teamsRows.map(r => (r[0]||'').trim().toLowerCase()).filter(Boolean));
+
+    // Skytteligan
+    const scorersText = await (await fetch(liveSheetUrl(LIVE_SCORERS_SHEET))).text();
+    const scorersRows = parseCSV(scorersText).slice(2);
+    liveScorers = scorersRows
+      .filter(r => r[1])
+      .map(r => ({ rank: parseInt(r[0])||999, name: (r[1]||'').trim().toLowerCase(), goals: parseInt(r[3])||0 }))
+      .filter(s => s.goals > 0);
+
+    // Målprognos
+    const goalsText = await (await fetch(liveSheetUrl(LIVE_GOALS_SHEET))).text();
+    const goalsRows = parseCSV(goalsText).slice(2);
+    const prognosRow = goalsRows.find(r => (r[0]||'').includes('Prognos'));
+    liveGoalPrognosis = prognosRow ? parseFloat(prognosRow[1]) : null;
+
+  } catch(e) {
+    console.warn('Live-data:', e.message);
+  }
+}
+
+function isTeamStillIn(name) {
+  if (!name || liveTeams.size === 0) return null;
+  const sv = name.toLowerCase();
+  const en = TEAM_NAME_MAP[sv] || sv;
+  // Check both Swedish and English name
+  return liveTeams.has(en) || liveTeams.has(sv);
+}
+
+function getScorerRank(name) {
+  if (!name || liveScorers.length === 0) return null;
+  const n = name.toLowerCase();
+  const found = liveScorers.find(s => s.name.includes(n) || n.includes(s.name));
+  return found ? found.rank : null;
+}
 
 async function loadData() {
   const [svarRows, facitRows] = await Promise.all([
@@ -552,10 +661,27 @@ async function loadData() {
     });
   }
 
-  results.sort((a, b) => {
+results.sort((a, b) => {
     if (b.poang !== a.poang) return b.poang - a.poang;
-    if (a.rattVmMastare  !== b.rattVmMastare)  return b.rattVmMastare  - a.rattVmMastare;
-    if (a.rattSkyttekung !== b.rattSkyttekung) return b.rattSkyttekung - a.rattSkyttekung;
+
+    // TB1: Lag kvar i turneringen
+    const aIn = isTeamStillIn(a.vmMastare);
+    const bIn = isTeamStillIn(b.vmMastare);
+    if (aIn !== bIn) {
+      if (aIn === true) return -1;
+      if (bIn === true) return 1;
+    }
+
+    // TB2: Placering i skytteligan (lägre = bättre)
+    const aRank = getScorerRank(a.skyttekung) || 999;
+    const bRank = getScorerRank(b.skyttekung) || 999;
+    if (aRank !== bRank) return aRank - bRank;
+
+    // TB3: Närmast antal mål (mot prognos om tillgänglig)
+    const target = liveGoalPrognosis || null;
+    if (target) {
+      return Math.abs(a.malGissning - target) - Math.abs(b.malGissning - target);
+    }
     return a.malDiff - b.malDiff;
   });
 
@@ -625,8 +751,60 @@ function renderNextMatch(scores) {
     }
   }
 
-  if (nextIdx === -1) {
-    wrap.style.display = 'none';
+if (nextIdx === -1) {
+    // Alla 13 matcher spelade – visa skytteliga topp 3 + målprognos
+    if (liveScorers.length > 0) {
+      // Gruppera spelare per målantal
+      const medals = ['🥇','🥈','🥉'];
+      const groups = [];
+      for (const s of liveScorers) {
+        const last = groups[groups.length - 1];
+        if (last && last.goals === s.goals) {
+          last.players.push(s.name);
+        } else {
+          if (groups.length >= 3) break;
+          groups.push({ goals: s.goals, players: [s.name] });
+        }
+      }
+
+      // Begränsa visning baserat på antal spelare
+      const totalTop2 = (groups[0]?.players.length||0) + (groups[1]?.players.length||0);
+      let showGroups;
+      if ((groups[0]?.players.length||0) > 3) {
+        showGroups = groups.slice(0, 1); // Bara 1:a om fler än 3 delar den
+      } else if (totalTop2 > 3) {
+        showGroups = groups.slice(0, 2); // Bara 1:a och 2:a om fler än 3 totalt
+      } else {
+        showGroups = groups.slice(0, 3); // Alla tre platser
+      }
+
+      const truncateName = name => {
+        const parts = name.trim().split(' ');
+        if (parts.length < 2) return name;
+        return parts[0][0].toUpperCase() + '.' + parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+      };
+
+      const scorerRows = showGroups.map((g, i) =>
+        `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:5px;font-size:.85rem">
+          <span>${medals[i]}</span>
+          <span style="color:var(--text);flex:1">${g.players.map(p => esc(truncateName(p))).join(', ')}</span>
+          <span style="color:var(--text-muted);white-space:nowrap">${g.goals} mål</span>
+        </div>`
+      ).join('');
+
+      const prognosStr = liveGoalPrognosis
+        ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--card-border);font-size:.85rem;color:var(--text-muted)">Prognos totalt antal mål: <strong style="color:var(--text)">${Math.round(liveGoalPrognosis)}</strong></div>`
+        : '';
+
+      wrap.style.display = 'block';
+      wrap.innerHTML = `<div class="next-match-card">
+        <div class="next-match-label">⚽ Skytteligatoppen</div>
+        ${scorerRows}
+        ${prognosStr}
+      </div>`;
+    } else {
+      wrap.style.display = 'none';
+    }
     return;
   }
 
@@ -665,6 +843,13 @@ function renderNextMatch(scores) {
   </div>`;
 }
 
+function truncateName(name) {
+  if (!name) return name;
+  const parts = name.trim().split(' ');
+  if (parts.length < 2) return name;
+  return parts[0][0].toUpperCase() + '.' + parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
 function renderLeaderboard(scores, filter) {
   if (filter !== undefined) currentFilter = filter;
 
@@ -699,7 +884,18 @@ function renderLeaderboard(scores, filter) {
       <span class="rank">${rankDisp}</span>
       <span class="info">
         <span class="namn">${esc(s.namn)}${nameCount[s.namn] > 1 && s.tipsnr ? ' <span style="font-size:.75em;opacity:.6">('+esc(s.tipsnr)+')</span>' : ''}</span>
-        <span class="sub">${esc(s.vmMastare)} · ${esc(s.skyttekung)} · ${s.malGissning} mål</span>
+        <span class="sub">${(() => {
+          const tin = isTeamStillIn(s.vmMastare);
+          const team = tin === false ? '<s>' + esc(s.vmMastare) + '</s>' : esc(s.vmMastare);
+          const rank = getScorerRank(s.skyttekung);
+          const scorer = esc(truncateName(s.skyttekung)) + (rank ? ' #' + rank : '');
+          let goalStr = s.malGissning + ' mål';
+          if (liveGoalPrognosis) {
+            const diff = Math.abs(s.malGissning - Math.round(liveGoalPrognosis));
+            goalStr += ' (-' + diff + ')';
+          }
+          return team + ' · ' + scorer + ' · ' + goalStr;
+        })()}</span>
       </span>
       <span class="pts">${s.poang}<br><span class="pts-unit">rätt</span></span>
     </div>`;
@@ -803,9 +999,27 @@ function showDetail(namn) {
       <div class="detail-meta">#${s.rank} · ${s.poang} rätta av ${MATCH_COUNT}</div>
     </div>
     <div class="tiebreak">
-      <div class="tb-item"><span class="tb-label">VM-mästare</span><span class="tb-val">${esc(s.vmMastare) || '–'}</span></div>
-      <div class="tb-item"><span class="tb-label">Skyttekung</span><span class="tb-val">${esc(s.skyttekung) || '–'}</span></div>
-      <div class="tb-item"><span class="tb-label">Antal mål</span><span class="tb-val">${s.malGissning || '–'}</span></div>
+      <div class="tb-item">
+        <span class="tb-label">VM-mästare</span>
+        <span class="tb-val">${(() => {
+          const tin = isTeamStillIn(s.vmMastare);
+          if (tin === false) return '<s>' + esc(s.vmMastare) + '</s>';
+          if (tin === true)  return esc(s.vmMastare);
+          return esc(s.vmMastare) || '–';
+        })()}</span>
+  
+      <div class="tb-item">
+        <span class="tb-label">Skyttekung</span>
+        <span class="tb-val">${(() => {
+          const rank = getScorerRank(s.skyttekung);
+          return (esc(s.skyttekung) + (rank ? ' #' + rank : '')) || '–';
+        })()}</span>
+  
+      <div class="tb-item">
+        <span class="tb-label">Antal mål</span>
+        <span class="tb-val">${s.malGissning || '–'}${liveGoalPrognosis ? '<br><span style="font-size:.7em;opacity:.7">prognos: ' + Math.round(liveGoalPrognosis) + '</span>' : ''}</span>
+  
+
     </div>
     <p class="section-title">Matchresultat</p>
     <div class="match-list">${matchRows}</div>`;
@@ -813,6 +1027,7 @@ function showDetail(namn) {
 
 async function refresh() {
   try {
+    await fetchLiveData();
     const scores = await loadData();
     document.getElementById('status').style.display = 'none';
     document.getElementById('updated').textContent  = scores.length;
