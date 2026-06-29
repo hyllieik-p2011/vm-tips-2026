@@ -410,6 +410,7 @@
 <div class="container">
   <div id="status"><div class="spinner"></div>Hämtar resultat...</div>
   <div id="next-match-wrap" style="display:none"></div>
+  <div id="winner-banner" style="display:none;text-align:center;padding:8px 0 4px;font-size:.85rem;color:var(--text-muted)"></div>
   <div id="search-wrap" style="display:none; margin-bottom:12px">
     <input id="search-box" type="search" placeholder="🔍  Sök namn..." autocomplete="off"
       oninput="renderLeaderboard(cachedScores, this.value)"
@@ -857,6 +858,27 @@ function truncateName(name) {
   return parts[0][0].toUpperCase() + '.' + parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 }
 
+function renderWinnerBanner(scores) {
+  const banner = document.getElementById('winner-banner');
+  if (!banner) return;
+
+  // Visa bara om alla 13 matcher har facit inlagt
+  const allPlayed = cachedFacitRow && cachedFacitRow.slice(0, 13).every(v => String(v || '').trim() !== '');
+  if (!allPlayed) { banner.style.display = 'none'; return; }
+
+  // Hitta ensam etta
+  if (scores.length === 0) { banner.style.display = 'none'; return; }
+  const topRank = scores[0].rank;
+  const winners = scores.filter(s => s.rank === topRank);
+
+  if (winners.length === 1) {
+    banner.style.display = 'block';
+    banner.innerHTML = `<div>🎉 Grattis till vår vinnare <strong>${esc(winners[0].namn)}</strong> 🎉</div><div>Kampen om pallen fortsätter!</div>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function renderLeaderboard(scores, filter) {
   if (filter !== undefined) currentFilter = filter;
 
@@ -867,6 +889,7 @@ function renderLeaderboard(scores, filter) {
   lb.style.display     = 'flex';
   document.getElementById('search-wrap').style.display = 'block';
   renderNextMatch(scores);
+  renderWinnerBanner(scores);
 
   // Restore filter input value
   if (search) search.value = currentFilter;
@@ -953,6 +976,7 @@ function showDetail(namn) {
   const det = document.getElementById('detail');
   document.getElementById('search-wrap').style.display  = 'none';
   document.getElementById('next-match-wrap').style.display = 'none';
+  document.getElementById('winner-banner').style.display = 'none';
 
   lb.style.display  = 'none';
   det.style.display = 'block';
