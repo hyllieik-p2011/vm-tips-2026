@@ -409,8 +409,8 @@
 
 <div class="container">
   <div id="status"><div class="spinner"></div>Hämtar resultat...</div>
-  <div id="next-match-wrap" style="display:none"></div>
   <div id="winner-banner" style="display:none;text-align:center;padding:8px 0 4px;font-size:.85rem;color:var(--text-muted)"></div>
+  <div id="next-match-wrap" style="display:none"></div>
   <div id="search-wrap" style="display:none; margin-bottom:12px">
     <input id="search-box" type="search" placeholder="🔍  Sök namn..." autocomplete="off"
       oninput="renderLeaderboard(cachedScores, this.value)"
@@ -873,7 +873,7 @@ function renderWinnerBanner(scores) {
 
   if (winners.length === 1) {
     banner.style.display = 'block';
-    banner.innerHTML = `<div>🎉 Grattis till vår vinnare <strong>${esc(winners[0].namn)}</strong> 🎉</div><div>Kampen om pallen fortsätter!</div>`;
+    banner.innerHTML = `<div>🏆 Grattis till vår vinnare <strong>${esc(winners[0].namn)}</strong> 🏆</div><div>Kampen om pallen fortsätter!</div>`;
   } else {
     banner.style.display = 'none';
   }
